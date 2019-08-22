@@ -33,12 +33,12 @@ Here's an example:
 ```
 $ ./qt-downloader
 Discovering available OS types... Done
-  linux, linux_x86, macos, windows
+  Choose from: linux, linux_x86, macos, windows
 
 $ ./qt-downloader macos
 OS type: macos
 Discovering available targets... Done
-  android, desktop, ios
+  Choose from: android, desktop, ios
 ```
 
 At any step, one might add option `--all` and all yet to be specified arguments are to be
