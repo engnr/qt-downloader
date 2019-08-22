@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+
+import argparse
+import platform
+import requests
+import semantic_version
+import shutil
+import subprocess
+import sys
+import urllib.request
+from lxml import etree, html
+from pathlib import Path
+
+
+BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
+
+OsMap = {
+  'macos': 'mac_x64',
+  'linux': 'linux_x64',
+  'windows': 'windows_x86'
+}
+
+
+def key_by_value(dict, value):
+  return next((left for left, right in dict.items() if right == value), None)
+
+
+def decode_version(v):
+  v = list(v)
+  major = v.pop(0)
+  patch = v.pop() if len(v) > 1 else 0
+  minor = ''.join(v)
+  return '{}.{}.{}'.format(major, minor, patch)
+
+
+def deduce_os():
+  os_type = platform.system().lower()
+  if os_type == 'darwin':
+    os_type = 'macos'
+  return os_type
+
+
+def discover_dirs(url):
+  reply = requests.get(url)
+  page = html.fromstring(reply.content)
+  items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
+  return [item for item in items if item.endswith('/')]
+
+
+def discover_kits(args):
+  os_dict = {}
+  os_types = discover_dirs(BaseUrl)
+  for os_type in os_types:
+    human_os = key_by_value(OsMap, os_type[:-1])
+    if human_os is None or not args.all and human_os != args.os:
+      continue
+
+    targets_dict = {}
+    targets = discover_dirs(BaseUrl + os_type)
+    targets = [target for target in targets if target != 'root/']
+    for target in targets:
+      if args.target != 'unknown' and target[:-1] != args.target:
+        continue
+
+      versions_dict = {}
+      versions = discover_dirs(BaseUrl + os_type + target)
+      for version in versions:
+        if version.startswith('tools_') or version.endswith('_preview/') or version.endswith('_wasm/') or '_src' in version or not version.startswith('qt5_'):
+          continue
+
+        ver = decode_version(version[len('qt5_'):-1])
+        if not args.all and ver != args.version:
+          continue
+
+        toolchains = discover_dirs(BaseUrl + os_type + target + version)
+        toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
+        toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
+        toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
+        versions_dict[ver] = toolchains
+
+      targets_dict[target[:-1]] = versions_dict
+
+    os_type = key_by_value(OsMap, os_type[:-1])
+    os_dict[os_type] = targets_dict
+
+  return os_dict
+
+
+def build_url(args):
+  ver = args.version.replace('.', '')
+  return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
+
+
+def get_info(url, version, toolchain):
+  reply = requests.get(url + "Updates.xml")
+  update_xml = etree.fromstring(reply.content)
+
+  ver = version.replace('.', '')
+
+  for package in update_xml.xpath('//PackageUpdate'):
+    name = package.xpath('Name/text()')[0]
+    if name.startswith('qt.') and name.endswith('.{}.{}'.format(ver, toolchain)):
+      version = package.xpath('Version/text()')[0]
+      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+      return (name, version, archives)
+
+  print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
+  return None
+
+
+def download_and_extract(archives_url, archives):
+  for archive in archives:
+    try:
+      module = archive.split('-')[0]
+      print('Downloading module {}... '.format(module), end='', flush=True)
+      with urllib.request.urlopen(archives_url + archive) as response, open(archive, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+      print('\rExtracting module {}... '.format(module), end='', flush=True)
+      subprocess.run('7z x {}'.format(archive), shell=True, check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      print('\rInstalled module {} successfully'.format(module))
+    except subprocess.CalledProcessError as e:
+      print('Error: {}'.format(e))
+      raise RuntimeError('Stopped due errors')
+    except KeyboardInterrupt:
+      print('Interrupted')
+      raise KeyboardInterrupt
+    finally:
+      Path(archive).unlink()
+
+  print('Finished installation')
+
+
+
+def main():
+  parser = argparse.ArgumentParser(description='Qt downloader',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('-a', '--all', action='store_true', help='List all OS types, Qt versions, targets, and toolchains')
+  parser.add_argument('os', nargs='?', default='auto', help='Operating system type: {} or auto'.format(', '.join(OsMap.keys())))
+  parser.add_argument('version', nargs='?', default='5.12.4', help='Qt version conforming to Semantic Versioning format: major.minor.patch')
+  parser.add_argument('target', nargs='?', default='unknown', help='Target platform; see output of --list option for supported targets')
+  parser.add_argument('toolchain', nargs='?', default='unknown', help='Toolchain to use; see output of --list option for available toolchains')
+  args = parser.parse_args()
+
+  if not args.all:
+    if args.os == 'auto':
+      args.os = deduce_os()
+    elif args.os not in OsMap.keys():
+      print('Wrong OS type: {}. Supported list: {}\n'.format(args.os, ', '.join(OsMap.keys())), file=sys.stderr)
+      parser.print_help()
+      sys.exit(1)
+
+    if not semantic_version.validate(args.version):
+      print('Wrong version: {}. Should follow Semantic Versioning format: major.minor.patch\n'.format(args.version), file=sys.stderr)
+      parser.print_help()
+      sys.exit(1)
+
+    print('OS type: {}'.format(args.os))
+
+    print('Qt version: {}'.format(args.version))
+
+    if args.target != 'unknown':
+      print('Target: {}'.format(args.target))
+
+    if args.toolchain != 'unknown':
+      print('Toolchain: {}'.format(args.toolchain))
+
+  if args.all or args.target == 'unknown' or args.toolchain == 'unknown':
+    if args.all:
+      print('Discovering available Qt kits...', end='', flush=True)
+    elif args.target == 'unknown':
+      print('Discovering targets and toolchains...', end='', flush=True)
+    else:
+      print('Discovering toolchains...', end='', flush=True)
+
+    kits = discover_kits(args)
+    print(' Done')
+    if args.all:
+      for os_type, targets in kits.items():
+        print('  {}:'.format(os_type))
+        for target, versions in targets.items():
+          print('    Target {} supports toolchains:'.format(target))
+          for version, toolchains in versions.items():
+            print('      {}: {}'.format(version, ', '.join(toolchains)))
+    else:
+      if args.target != 'unknown' and len(kits[args.os]) == 0:
+        print('  Unrecognized target: {}'.format(args.target), file=sys.stderr)
+        sys.exit(1)
+
+      for target, versions in kits[args.os].items():
+        if args.version in versions:
+          print('  Target {} supports toolchains: {}'.format(target, ', '.join(versions[args.version])))
+        else:
+          print('  Target {} does not support any toolchains for version {}'.format(target, args.version))
+          
+    sys.exit(0)
+
+  url = build_url(args)
+
+  info = get_info(url, args.version, args.toolchain)
+  if info is None:
+    sys.exit(1)
+
+  name, version, archives = info
+  download_and_extract(url + name + '/' + version, archives)
+
+
+if __name__ == '__main__':
+  try:
+    main()
+  except RuntimeError as error:
+    print(error)
+  except KeyboardInterrupt:
+    print('Stopped by user')
+
