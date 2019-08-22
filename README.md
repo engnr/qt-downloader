@@ -45,3 +45,7 @@ At any step, one might add option `--all` and all yet to be specified arguments 
 discovered in one go. This way, discovering of all the arguments at the very beginning is
 possible too: `./qt-downloader --all`. *Bear in mind, though, that this operation lasts for
 about half a minute and provides lengthy output.*
+
+Qt kit lands into folder with name equal to requested version. This folder is created in
+current working directory.
+
