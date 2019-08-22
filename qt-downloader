@@ -30,7 +30,7 @@ def decode_version(v):
   major = v.pop(0)
   patch = v.pop() if len(v) > 1 else 0
   minor = ''.join(v)
-  return semantic_version.Version('{}.{}.{}'.format(major, minor, patch))
+  return '{}.{}.{}'.format(major, minor, patch)
 
 
 def deduce_os():
@@ -139,17 +139,7 @@ def download_and_extract(archives_url, archives):
   print('Finished installation')
 
 
-
-def main():
-  parser = argparse.ArgumentParser(description='Qt downloader',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {}, auto, or discovered one. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
-  parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
-  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Omit this to discover available versions')
-  parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
-  parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
-  args = parser.parse_args()
-
+def show_discover_context(args, parser):
   if args.os != 'discover':
     if args.os == 'auto':
       args.os = deduce_os()
@@ -169,69 +159,163 @@ def main():
   if args.toolchain != 'discover':
     print('Toolchain: {}'.format(args.toolchain))
 
+
+def show_discovered_parameters(args, params, labels):
+  print('Discovering available ', end='')
+  
+  discoverables = []
+  for index, param in enumerate(params):
+    if param == 'discover':
+      discoverables.append(labels[index])
+
+  if not args.all:
+    discoverables = discoverables[:1]
+
+  if len(discoverables) == 1:
+    print('{}...'.format(discoverables[0]), end='', flush=True)
+  elif len(discoverables) == 2:
+    print('{}...'.format(' and '.join(discoverables)), end='', flush=True)
+  else:
+    print('{}, and {}...'.format(', '.join(discoverables[:-1]), discoverables[-1]), end='', flush=True)
+
+
+def show_os_types_only(kits):
+  print('  Choose from: {}'.format(', '.join(sorted(kits.keys()))))
+
+
+def show_targets_only(targets):
+  print('  Choose from: {}'.format(', '.join(sorted(targets.keys()))))
+
+
+def show_versions_only(versions):
+  print('  Choose from: {}'.format(', '.join(map(str, sorted(map(semantic_version.Version, versions.keys()))))))
+
+
+def show_toolchains_only(toolchains):
+  print('  Choose from: {}'.format(', '.join(sorted(toolchains))))
+
+
+def check_os_type(args, kits):
+  if not args.os in kits:
+    print('  Unknown OS type: {}'.format(args.os))
+    show_os_types_only(kits)
+    sys.exit(1)
+
+
+def check_targets(args, targets):
+  if not args.target in targets:
+    print('  Unknown target: {}'.format(args.target))
+    show_targets_only(targets)
+    sys.exit(1)
+
+
+def check_versions(args, versions):
+  if not args.version in versions:
+    print('  Unknown version: {}'.format(args.version))
+    show_versions_only(versions)
+    sys.exit(1)
+
+
+def check_toolchains(args, toolchains):
+  if not args.toolchain in toolchains:
+    print('  Unknown toolchain: {}'.format(args.toolchain))
+    show_toolchains_only(toolchains)
+    sys.exit(1)
+
+def show_os_types_and_all(kits, indent = 0):
+  for os_type, targets in kits.items():
+    print('  {}{}:'.format('  ' * indent, os_type))
+    show_targets_and_all(targets, indent + 1)
+
+
+def show_targets_and_all(targets, indent = 0):
+  for target, versions in sorted(targets.items()):
+    print('  {}Target {} supports toolchains:'.format('  ' * indent, target))
+    show_versions_and_all(versions, indent + 1)
+
+
+def show_versions_and_all(versions, indent = 0):
+  for version, toolchains in sorted(versions.items()):
+    print('  {}{}: {}'.format('  ' * indent, version, ', '.join(sorted(toolchains))))
+
+
+def show_discovery_results(args, kits):
+  print(' Done')
+
+  if args.os == 'discover':
+    if not args.all:
+      show_os_types_only(kits)
+    else:
+      show_os_types_and_all(kits)
+  elif args.target == 'discover':
+    check_os_type(args, kits)
+    targets = kits[args.os]
+    if not args.all:
+      show_targets_only(targets)
+    else:
+      show_targets_and_all(targets)
+  elif args.version == 'discover':
+    check_os_type(args, kits)
+    targets = kits[args.os]
+    check_targets(args, targets)
+    versions = targets[args.target]
+    if not args.all:
+      show_versions_only(versions)
+    else:
+      show_versions_and_all(versions)
+  elif args.toolchain == 'discover':
+    check_os_type(args, kits)
+    targets = kits[args.os]
+    check_targets(args, targets)
+    versions = targets[args.target]
+    check_versions(args, versions)
+    toolchains = versions[args.version]
+    show_toolchains_only(toolchains)
+  else:
+    check_os_type(args, kits)
+    targets = kits[args.os]
+    check_targets(args, targets)
+    versions = targets[args.target]
+    check_versions(args, versions)
+    toolchains = versions[args.version]
+    check_toolchains(args, toolchains)
+
+
+def verify_parameters(args):
+  print('Verifying arguments...', end='')
+  kits = discover_kits(args)
+  show_discovery_results(args, kits)
+
+
+def main():
+  parser = argparse.ArgumentParser(description='Qt downloader',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {}, auto, or discovered one. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
+  parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
+  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Omit this to discover available versions')
+  parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
+  parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
+  args = parser.parse_args()
+
+  show_discover_context(args, parser)
+
   params = [args.os, args.target, args.version, args.toolchain]
   labels = ['OS types', 'targets', 'Qt versions', 'toolchains']
   if 'discover' in params:
-    print('Discovering available ', end='')
-    
-    discoverables = []
-    for index, param in enumerate(params):
-      if param == 'discover':
-        discoverables.append(labels[index])
-
-    if not args.all:
-      discoverables = discoverables[:1]
-
-    if len(discoverables) == 1:
-      print('{}...'.format(discoverables[0]), end='', flush=True)
-    elif len(discoverables) == 2:
-      print('{}...'.format(' and '.join(discoverables)), end='', flush=True)
-    else:
-      print('{}, and {}...'.format(', '.join(discoverables[:-1]), discoverables[-1]), end='', flush=True)
-
+    show_discovered_parameters(args, params, labels)
     kits = discover_kits(args)
-    print(' Done')
-
-    if args.os == 'discover':
-      if not args.all:
-        print('  {}'.format(', '.join(sorted(kits.keys()))))
-      else:
-        for os_type, targets in kits.items():
-          print('  {}:'.format(os_type))
-          for target, versions in sorted(targets.items()):
-            print('    Target {} supports toolchains:'.format(target))
-            for version, toolchains in sorted(versions.items()):
-              print('      {}: {}'.format(version, ', '.join(sorted(toolchains))))
-    elif args.target == 'discover':
-      targets = kits[args.os]
-      if not args.all:
-        print('  {}'.format(', '.join(sorted(targets.keys()))))
-      else:
-        for target, versions in sorted(targets.items()):
-          print('  Target {} supports toolchains:'.format(target))
-          for version, toolchains in sorted(versions.items()):
-            print('    {}: {}'.format(version, ', '.join(sorted(toolchains))))
-    elif args.version == 'discover':
-      versions = kits[args.os][args.target]
-      if not args.all:
-        print('  {}'.format(', '.join(map(str, sorted(versions.keys())))))
-      else:
-        for version, toolchains in sorted(versions.items()):
-          print('  {}: {}'.format(version, ', '.join(sorted(toolchains))))
-    elif args.toolchain == 'discover':
-      toolchains = kits[args.os][args.target][args.version]
-      print('  {}'.format(', '.join(sorted(toolchains))))
-
+    show_discovery_results(args, kits)
     sys.exit(0)
+  else:
+    verify_parameters(args)
+    url = build_url(args)
 
-  url = build_url(args)
+    info = get_info(url, args.version, args.toolchain)
+    if info is None:
+      sys.exit(1)
 
-  info = get_info(url, args.version, args.toolchain)
-  if info is None:
-    sys.exit(1)
-
-  name, version, archives = info
-  download_and_extract(url + name + '/' + version, archives)
+    name, version, archives = info
+    download_and_extract(url + name + '/' + version, archives)
 
 
 if __name__ == '__main__':
