@@ -7,7 +7,7 @@ CLI to download Qt on headless systems
 
 ```bash
 sudo apt update
-sudo apt install python3-pip
+sudo apt install python3-pip p7zip-full
 sudo pip3 install requests semantic_version lxml
 ```
 
@@ -47,5 +47,5 @@ possible too: `./qt-downloader --all`. *Bear in mind, though, that this operatio
 about half a minute and provides lengthy output.*
 
 Qt kit lands into folder with name equal to requested version. This folder is created in
-current working directory.
+the current working directory.
 
