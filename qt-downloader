@@ -76,7 +76,7 @@ def discover_kits(args):
         ver = decode_version(version[len('qt5_'):-1])
         versions_dict[ver] = None
 
-        if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version == ver):
+        if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version != 'latest' and args.version == ver):
           continue
 
         toolchains = discover_dirs(BaseUrl + os_type + target + version)
@@ -150,10 +150,20 @@ def show_discover_context(args, parser):
     print('Target: {}'.format(args.target))
 
   if args.version != 'discover':
-    if not semantic_version.validate(args.version):
+    if args.version == 'latest':
+      print('Discovering latest version... ', end='')
+      kits = discover_kits(args)
+      print('Done')
+      check_os_type(args, kits)
+      targets = kits[args.os]
+      check_targets(args, targets)
+      versions = targets[args.target]
+      args.version = str(sorted(map(semantic_version.Version, versions.keys()))[-1])
+    elif not semantic_version.validate(args.version):
       print('Wrong version: {}. Should follow Semantic Versioning format: major.minor.patch\n'.format(args.version), file=sys.stderr)
       parser.print_help()
       sys.exit(1)
+
     print('Qt version: {}'.format(args.version))
 
   if args.toolchain != 'discover':
@@ -292,7 +302,7 @@ def main():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {}, auto, or discovered one. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
   parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
-  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Omit this to discover available versions')
+  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
   args = parser.parse_args()
