@@ -331,6 +331,8 @@ def main():
 if __name__ == '__main__':
   try:
     main()
+  except IOError as error:
+    print(error)
   except RuntimeError as error:
     print(error)
   except KeyboardInterrupt:
