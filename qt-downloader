@@ -129,7 +129,15 @@ def download_and_extract(archives_url, archives):
       print('\rInstalled module {} successfully'.format(module))
     except subprocess.CalledProcessError as e:
       print('Error: {}'.format(e))
-      raise RuntimeError('Stopped due errors')
+
+      os_type = deduce_os()
+      saggestion = ''
+      if os_type == 'linux':
+        suggestion = ' Run sudo apt install p7zip-full on Ubuntu'
+      elif os_type == 'macos':
+        suggestion = ' Run brew install p7zip on macOS'
+        
+      raise RuntimeError('Check that 7z command is in your PATH.{}'.format(suggestion))
     except KeyboardInterrupt:
       print('Interrupted')
       raise KeyboardInterrupt
