@@ -100,6 +100,40 @@ def build_url(args):
   return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
 
 
+def toolchain_build_url(args, tools):
+  return BaseUrl + '{}/{}/tools_{}/'.format(OsMap[args.os], args.target, tools)
+
+
+def ossl_info(url, name):
+  reply = requests.get(url + "Updates.xml")
+  update_xml = etree.fromstring(reply.content)
+
+  for package in update_xml.xpath('//PackageUpdate'):
+    name = package.xpath('Name/text()')[0]
+    if name.startswith('qt.') and name.endswith('_{}'.format(name[len(name)-3:])):
+      version = package.xpath('Version/text()')[0]
+      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+      return (name, version, archives)
+
+  print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
+  return None
+
+
+def mingw_info(url, mingw):
+  reply = requests.get(url + "Updates.xml")
+  update_xml = etree.fromstring(reply.content)
+
+  for package in update_xml.xpath('//PackageUpdate'):
+    name = package.xpath('Name/text()')[0]
+    if name.startswith('qt.') and name.endswith('.{}'.format(mingw)):
+      version = package.xpath('Version/text()')[0]
+      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+      return (name, version, archives)
+
+  print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
+  return None
+
+
 def get_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
   update_xml = etree.fromstring(reply.content)
@@ -319,6 +353,11 @@ def main():
   parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--output', '-o', default=os.getcwd(), help='Output directory')
   parser.add_argument('--qt_modules', default='', help='Download selected qt modules')
+  parser.add_argument('--mingw', '-m', default=None,
+                      help='Download Mingw from Qt.Expected Format - win{arch}_mingw{major}{minor} eg: win32_mingw730')
+  parser.add_argument('--openssl', choices=['openssl_x64', 'openssl_x32'],
+                      default=None, help='Download openSSl Distribution from Qt. ')
+
   args = parser.parse_args()
 
   show_discover_context(args, parser)
