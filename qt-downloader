@@ -10,6 +10,8 @@ import sys
 import urllib.request
 from lxml import etree, html
 from pathlib import Path
+import os
+import shlex
 
 
 BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
@@ -124,7 +126,7 @@ def download_and_extract(archives_url, archives):
         shutil.copyfileobj(response, out_file)
 
       print('\rExtracting module {}... '.format(module), end='', flush=True)
-      subprocess.run('7z x {}'.format(archive), shell=True, check=True,
+      subprocess.run('7z x {0} -o{1}'.format(archive, output), shell=True, check=True,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       print('\rInstalled module {} successfully'.format(module))
     except subprocess.CalledProcessError as e:
@@ -313,6 +315,7 @@ def main():
   parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
+  parser.add_argument('--output', '-o', default=os.getcwd(), help='Output directory')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
