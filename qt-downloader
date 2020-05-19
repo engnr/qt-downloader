@@ -117,10 +117,12 @@ def get_info(url, version, toolchain):
   return None
 
 
-def download_and_extract(archives_url, archives):
+def download_and_extract(archives_url, archives, output, req_modules):
   for archive in archives:
+    module = archive.split('-')[0]
+    if len(req_modules) != 0 and (module not in req_modules):
+        continue
     try:
-      module = archive.split('-')[0]
       print('Downloading module {}... '.format(module), end='', flush=True)
       with urllib.request.urlopen(archives_url + archive) as response, open(archive, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
@@ -316,6 +318,7 @@ def main():
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--output', '-o', default=os.getcwd(), help='Output directory')
+  parser.add_argument('--qt_modules', default='', help='Download selected qt modules')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
@@ -335,8 +338,19 @@ def main():
     if info is None:
       sys.exit(1)
 
+    if args.mingw:
+      mingw = toolchain_build_url(args, 'mingw')
+      mingw_name, mingw_version, mingw_archives = mingw_info(mingw, args.mingw)
+      download_and_extract(mingw + mingw_name + '/' + mingw_version, mingw_archives, args.output, [])
+
+    if args.openssl:
+      ossl = toolchain_build_url(args, args.openssl)
+      ossl_name, ossl_version, ossl_archives = ossl_info(ossl, args.openssl)
+      download_and_extract(ossl + ossl_name + '/' + ossl_version, ossl_archives, args.output, [])
+
     name, version, archives = info
-    download_and_extract(url + name + '/' + version, archives)
+    qt_modules = shlex.split(args.qt_modules)
+    download_and_extract(url + name + '/' + version, archives, args.output, qt_modules)
 
 
 if __name__ == '__main__':
