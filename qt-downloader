@@ -169,7 +169,7 @@ def download_and_extract(archives_url, archives, output, req_modules):
       print('Error: {}'.format(e))
 
       os_type = deduce_os()
-      saggestion = ''
+      suggestion = ''
       if os_type == 'linux':
         suggestion = ' Run sudo apt install p7zip-full on Ubuntu'
       elif os_type == 'macos':
