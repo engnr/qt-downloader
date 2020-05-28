@@ -116,10 +116,12 @@ def get_info(url, version, toolchain):
   return None
 
 
-def download_and_extract(archives_url, archives, output):
+def download_and_extract(archives_url, archives, modules, output):
   for archive in archives:
+    module = archive.split('-')[0]
+    if len(modules) != 0 and (module not in modules):
+      continue
     try:
-      module = archive.split('-')[0]
       print('Downloading module {}... '.format(module), end='', flush=True)
       with urllib.request.urlopen(archives_url + archive) as response, open(archive, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
@@ -314,6 +316,7 @@ def main():
   parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
+  parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
   args = parser.parse_args()
 
@@ -335,7 +338,7 @@ def main():
       sys.exit(1)
 
     name, version, archives = info
-    download_and_extract(url + name + '/' + version, archives, args.output)
+    download_and_extract(url + name + '/' + version, archives, args.modules, args.output)
 
 
 if __name__ == '__main__':
