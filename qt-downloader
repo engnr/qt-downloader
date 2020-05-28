@@ -313,7 +313,7 @@ def main():
   parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
   parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
-  parser.add_argument('-a', '--all', action='store_true', help='Discover allowed values for all missing arguments')
+  parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
   args = parser.parse_args()
 
