@@ -310,7 +310,7 @@ def verify_parameters(args):
 def main():
   parser = argparse.ArgumentParser(description='Qt downloader',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {}, auto, or discovered one. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
+  parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {} or auto. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
   parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
   parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
