@@ -355,7 +355,7 @@ def main():
   parser.add_argument('--qt_modules', default='', help='Download selected qt modules')
   parser.add_argument('--mingw', '-m', default=None,
                       help='Download Mingw from Qt.Expected Format - win{arch}_mingw{major}{minor} eg: win32_mingw730')
-  parser.add_argument('--openssl', choices=['openssl_x64', 'openssl_x32'],
+  parser.add_argument('--openssl', choices=['openssl_x64', 'openssl_x86'],
                       default=None, help='Download openSSl Distribution from Qt. ')
 
   args = parser.parse_args()
