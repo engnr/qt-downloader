@@ -14,6 +14,7 @@ import os
 
 
 BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
+VersionBaseUrl = 'https://download.qt.io/official_releases/qt/'
 
 OsMap = {
   'macos': 'mac_x64',
@@ -69,23 +70,21 @@ def discover_kits(args):
         continue
 
       versions_dict = {}
-      versions = discover_dirs(BaseUrl + os_type + target)
-      for version in versions:
-        if version.startswith('tools_') or version.endswith('_preview/') or version.endswith('_wasm/') or '_src' in version or not version.startswith('qt5_'):
-          continue
+      major_minor_version_dirs = discover_dirs(VersionBaseUrl)
+      for major_minor_version_dir in major_minor_version_dirs:
+        full_version_dirs = discover_dirs(VersionBaseUrl + major_minor_version_dir)
+        for version in full_version_dirs:
+          version = version[:-1]
+          versions_dict[version] = None
+          if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version != 'latest' and args.version == version):
+            continue
+          major, minor, patch = version.split('.')
+          toolchains = discover_dirs('{0}qt{1}_{1}{2}{3}/'.format(BaseUrl + os_type + target, major, minor, patch))
+          toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
+          toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
+          toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
 
-        ver = decode_version(version[len('qt5_'):-1])
-        versions_dict[ver] = None
-
-        if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version != 'latest' and args.version == ver):
-          continue
-
-        toolchains = discover_dirs(BaseUrl + os_type + target + version)
-        toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
-        toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
-        toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
-
-        versions_dict[ver] = toolchains
+          versions_dict[version] = toolchains
 
       targets_dict[target[:-1]] = versions_dict
 
