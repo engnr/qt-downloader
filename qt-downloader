@@ -16,6 +16,18 @@ import os
 BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
 VersionBaseUrl = 'https://download.qt.io/official_releases/qt/'
 
+# versions cache
+__qt_avaliable_versions = []
+# os types cache
+__qt_avaliable_os_types = []
+# targets cache
+__qt_avaliable_targets = {}
+# cache dirs for {BaseUrl}/{os_type}/{target}/
+# E.g: https://download.qt.io/online/qtsdkrepository/linux_x64/android/
+__qt_targets_dirs_cache = {}
+# toolchains cache
+__qt_avaliable_toolchains = {}
+
 OsMap = {
   'macos': 'mac_x64',
   'linux': 'linux_x64',
@@ -42,6 +54,64 @@ def deduce_os():
   return os_type
 
 
+def qt_avaliable_versions():
+  global __qt_avaliable_versions
+  if not __qt_avaliable_versions:
+    major_minor_version_dirs = discover_dirs(VersionBaseUrl)
+    for major_minor_version_dir in major_minor_version_dirs:
+      full_version_dirs = discover_dirs(VersionBaseUrl + major_minor_version_dir)
+      for version_dir in full_version_dirs:
+        __qt_avaliable_versions.append(version_dir[:-1])
+    __qt_avaliable_versions = list(map(str, sorted(map(semantic_version.Version, __qt_avaliable_versions))))
+
+  return __qt_avaliable_versions
+
+
+def qt_avaliable_targets(os_type):
+  global __qt_avaliable_targets
+  if not __qt_avaliable_targets.get(os_type):
+    targets = discover_dirs(BaseUrl + os_type)
+    __qt_avaliable_targets[os_type] = [target[:-1] for target in targets if target != 'root/']
+  return __qt_avaliable_targets.get(os_type)
+
+
+def qt_version_select(version_expression):
+  if version_expression == 'latest':
+    version_expression = '*'
+  versions = [semantic_version.Version(v) for v in qt_avaliable_versions()]
+  selected_ver = semantic_version.SimpleSpec(version_expression).select(versions)
+  return str(selected_ver) if selected_ver else None
+
+
+def qt_targets_dirs(os_type, target):
+  global __qt_targets_dirs_cache
+  if not __qt_targets_dirs_cache.get(os_type + '_' + target):
+    # url like: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/
+    # {BaseUrl}{os_type}/{target}/
+    targets_dirs = discover_dirs('{0}{1}/{2}/'.format(BaseUrl, os_type, target))
+    __qt_targets_dirs_cache[os_type + '_' + target] = [d[:-1] for d in targets_dirs]
+  return __qt_targets_dirs_cache[os_type + '_' + target]
+
+
+def qt_avaliable_toolchains(os_type, target, version):
+  global __qt_avaliable_toolchains
+  if not __qt_avaliable_toolchains.get(os_type + '_' + target + '_' + version):
+    major, minor, patch = version.split('.')
+    # url like: https://download.qt.io/online/qtsdkrepository/linux_x64/desktop/qt5_5152/
+    # {BaseUrl}{os_type}/{target}/qt{majro}_{majro}{minor}{patch}/
+    toolchains_dir = 'qt{0}_{0}{1}{2}'.format(major, minor, patch)
+
+    if toolchains_dir in qt_targets_dirs(os_type, target):
+      toolchains = discover_dirs('{0}{1}/{2}/{3}/'.format(BaseUrl, os_type, target, toolchains_dir))
+      toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
+      toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
+      toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
+      __qt_avaliable_toolchains[os_type + '_' + target + '_' + version] = toolchains
+    else:
+      __qt_avaliable_toolchains[os_type + '_' + target + '_' + version] = set({})
+  return __qt_avaliable_toolchains[os_type + '_' + target + '_' + version]
+
+
 def discover_dirs(url):
   reply = requests.get(url)
   page = html.fromstring(reply.content)
@@ -51,42 +121,34 @@ def discover_dirs(url):
 
 def discover_kits(args):
   os_dict = {}
-  os_types = discover_dirs(BaseUrl)
+  os_types = OsMap.values()
   for os_type in os_types:
-    human_os = key_by_value(OsMap, os_type[:-1])
-    current_os = human_os if human_os is not None else os_type[:-1]
+    human_os = key_by_value(OsMap, os_type)
+    current_os = human_os if human_os is not None else os_type
     os_dict[current_os] = None
 
-    if not (args.os == 'discover' and args.all or args.os != 'discover' and args.os in [os_type[:-1], human_os]):
+    if not (args.os == 'discover' and args.all or args.os != 'discover' and args.os in [os_type, human_os]):
       continue
 
     targets_dict = {}
-    targets = discover_dirs(BaseUrl + os_type)
-    targets = [target for target in targets if target != 'root/']
-    for target in targets:
-      targets_dict[target[:-1]] = None
+    for target in qt_avaliable_targets(os_type):
+      targets_dict[target] = None
 
-      if not (args.target == 'discover' and args.all or args.target != 'discover' and args.target == target[:-1]):
+      if not (args.target == 'discover' and args.all or args.target != 'discover' and args.target == target):
         continue
 
       versions_dict = {}
-      major_minor_version_dirs = discover_dirs(VersionBaseUrl)
-      for major_minor_version_dir in major_minor_version_dirs:
-        full_version_dirs = discover_dirs(VersionBaseUrl + major_minor_version_dir)
-        for version in full_version_dirs:
-          version = version[:-1]
+      if args.version == 'discover':
+        for version in qt_avaliable_versions():
           versions_dict[version] = None
-          if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version != 'latest' and args.version == version):
-            continue
-          major, minor, patch = version.split('.')
-          toolchains = discover_dirs('{0}qt{1}_{1}{2}{3}/'.format(BaseUrl + os_type + target, major, minor, patch))
-          toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
-          toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
-          toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
+          if args.all:
+            versions_dict[version] = qt_avaliable_toolchains(os_type, target, version)
+      else:
+        check_versions(args)
+        version = qt_version_select(args.version)
+        versions_dict[version] = qt_avaliable_toolchains(os_type, target, version)
 
-          versions_dict[version] = toolchains
-
-      targets_dict[target[:-1]] = versions_dict
+      targets_dict[target] = versions_dict
 
     os_dict[current_os] = targets_dict
 
@@ -160,21 +222,19 @@ def show_discover_context(args, parser):
     print('Target: {}'.format(args.target))
 
   if args.version != 'discover':
-    if args.version == 'latest':
-      print('Discovering latest version... ', end='')
+    version = ''
+    if check_versions(args):
       kits = discover_kits(args)
-      print('Done')
       check_os_type(args, kits)
       targets = kits[args.os]
       check_targets(args, targets)
-      versions = targets[args.target]
-      args.version = str(sorted(map(semantic_version.Version, versions.keys()))[-1])
-    elif not semantic_version.validate(args.version):
+      version = qt_version_select(args.version)
+    else:
       print('Wrong version: {}. Should follow Semantic Versioning format: major.minor.patch\n'.format(args.version), file=sys.stderr)
       parser.print_help()
       sys.exit(1)
 
-    print('Qt version: {}'.format(args.version))
+    print('Qt version: {}'.format(version))
 
   if args.toolchain != 'discover':
     print('Toolchain: {}'.format(args.toolchain))
@@ -207,8 +267,8 @@ def show_targets_only(targets):
   print('  Choose from: {}'.format(', '.join(sorted(targets.keys()))))
 
 
-def show_versions_only(versions):
-  print('  Choose from: {}'.format(', '.join(map(str, sorted(map(semantic_version.Version, versions.keys()))))))
+def show_versions_only():
+  print('  Choose from: {}'.format(', '.join(qt_avaliable_versions())))
 
 
 def show_toolchains_only(toolchains):
@@ -229,11 +289,12 @@ def check_targets(args, targets):
     sys.exit(1)
 
 
-def check_versions(args, versions):
-  if not args.version in versions:
+def check_versions(args):
+  if not qt_version_select(args.version):
     print('  Unknown version: {}'.format(args.version))
-    show_versions_only(versions)
+    show_versions_only()
     sys.exit(1)
+  return True
 
 
 def check_toolchains(args, toolchains):
@@ -256,7 +317,8 @@ def show_targets_and_all(targets, indent = 0):
 
 def show_versions_and_all(versions, indent = 0):
   for version, toolchains in sorted(versions.items()):
-    print('  {}{}: {}'.format('  ' * indent, version, ', '.join(sorted(toolchains))))
+    if toolchains:
+      print('  {}{}: {}'.format('  ' * indent, version, ', '.join(sorted(toolchains))))
 
 
 def show_discovery_results(args, kits):
@@ -280,24 +342,26 @@ def show_discovery_results(args, kits):
     check_targets(args, targets)
     versions = targets[args.target]
     if not args.all:
-      show_versions_only(versions)
+      show_versions_only()
     else:
       show_versions_and_all(versions)
   elif args.toolchain == 'discover':
     check_os_type(args, kits)
     targets = kits[args.os]
     check_targets(args, targets)
+    check_versions(args)
+    version = qt_version_select(args.version)
     versions = targets[args.target]
-    check_versions(args, versions)
-    toolchains = versions[args.version]
+    toolchains = versions[version]
     show_toolchains_only(toolchains)
   else:
     check_os_type(args, kits)
     targets = kits[args.os]
     check_targets(args, targets)
     versions = targets[args.target]
-    check_versions(args, versions)
-    toolchains = versions[args.version]
+    check_versions(args)
+    version = qt_version_select(args.version)
+    toolchains = versions[version]
     check_toolchains(args, toolchains)
 
 
@@ -312,7 +376,7 @@ def main():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('os', nargs='?', default='discover', help='Operating system type: {}, auto, or discovered one. Omit this to discover available OS types'.format(', '.join(OsMap.keys())))
   parser.add_argument('target', nargs='?', default='discover', help='Target platform. Omit this to discover available targets')
-  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning format: major.minor.patch. Use \'latest\' to get most up to date version. Omit this to discover available versions.')
+  parser.add_argument('version', nargs='?', default='discover', help='Qt version conforming to Semantic Versioning select expression, E.g: 5, 5.14, 5.12.10, ... Use \'latest\' to get most up to date version. Omit this to discover available versions.')
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
@@ -330,6 +394,7 @@ def main():
     sys.exit(0)
   else:
     verify_parameters(args)
+    args.version = qt_version_select(args.version)
     url = build_url(args)
 
     info = get_info(url, args.version, args.toolchain)
@@ -349,4 +414,3 @@ if __name__ == '__main__':
     print(error)
   except KeyboardInterrupt:
     print('Stopped by user')
-
