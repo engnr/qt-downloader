@@ -48,3 +48,15 @@ about half a minute and provides lengthy output.*
 
 Qt kit lands into a folder with a name equal to the requested version.
 
+## Additional tools shipped with Qt
+
+Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
+- OpenSSL, see option `--mingw`
+- MinGW, see option `--openssl`
+
+The appropriate version of a tool is inferred automatically when possible.
+
+Additional tools land into the `Tools` folder by the side of the Qt itself.
+
+ 
+
