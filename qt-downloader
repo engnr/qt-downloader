@@ -127,6 +127,23 @@ def discover_openssl_tool(args, name):
   return None
 
 
+def discover_mingw_tool(args, name):
+  discovered_dirs = []
+
+  tools_dirs = discover_dirs(BaseUrl + '{}/{}/tools_{}'.format(OsMap[args.os], args.target, name))
+  for tool_dir in tools_dirs:
+    tool_dir = tool_dir[:-1]
+    if not tool_dir.startswith('qt.tools.'):
+      continue
+
+    tool_parts = tool_dir.split('.')
+    if args.os == 'windows':
+      if tool_parts[-1] == args.toolchain + '0':
+        return tool_dir
+
+  return None
+
+
 def build_main_url(args):
   ver = args.version.replace('.', '')
   return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
@@ -136,6 +153,10 @@ def build_tool_openssl_url(args, name, distr):
   return BaseUrl + '{}/{}/tools_{}_{}/'.format(OsMap[args.os], args.target, name, distr)
 
 
+def build_tool_url(args, name):
+  return BaseUrl + '{}/{}/tools_{}/'.format(OsMap[args.os], args.target, name)
+
+ 
 def get_main_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
   update_xml = etree.fromstring(reply.content)
@@ -168,6 +189,21 @@ def get_ossl_info(url, tool_name, distr):
   return None
 
 
+def get_mingw_info(url, distr):
+  reply = requests.get(url + "Updates.xml")
+  update_xml = etree.fromstring(reply.content)
+
+  for package in update_xml.xpath('//PackageUpdate'):
+    name = package.xpath('Name/text()')[0]
+    if name == distr:
+      version = package.xpath('Version/text()')[0]
+      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+      return (name, version, archives)
+
+  print('Update.xml does not contain proper entry for MinGW', file=sys.stderr)
+  return None
+
+ 
 def download_and_extract(archives_url, archives, modules, output):
   for archive in archives:
     module = archive.split('-')[0]
@@ -363,7 +399,13 @@ def verify_parameters(args):
       print('Unable to locate appropriate distribution of OpenSSL', file=sys.stderr)
       sys.exit(1)
 
-
+  if args.mingw:
+    mingw_distribution = discover_mingw_tool(args, 'mingw')
+    if mingw_distribution is None:
+      print('Unable to locate appropriate distribution of MinGW', file=sys.stderr)
+      sys.exit(1)
+    
+    
 def main():
   parser = argparse.ArgumentParser(description='Qt downloader',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -375,6 +417,7 @@ def main():
   parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
   parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
+  parser.add_argument('--mingw', action='store_true', help='Download MinGW distribution shipped with Qt. Relevant for Windows only')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
@@ -396,6 +439,7 @@ def main():
 
     name, version, archives = info
     download_and_extract(url + name + '/' + version, archives, args.modules, args.output)
+
     if args.openssl:
       ossl_distribution = discover_openssl_tool(args, 'openssl')
       ossl_url = build_tool_openssl_url(args, 'openssl', ossl_distribution)
@@ -403,6 +447,14 @@ def main():
       if ossl_info:
         ossl_name, ossl_version, ossl_archives = ossl_info
         download_and_extract(ossl_url + ossl_name + '/' + ossl_version, ossl_archives, None, args.output)
+
+    if args.mingw:
+      mingw_distribution = discover_mingw_tool(args, 'mingw')
+      mingw_url = build_tool_url(args, 'mingw')
+      mingw_info = get_mingw_info(mingw_url, mingw_distribution)
+      if mingw_info:
+        mingw_name, mingw_version, mingw_archives = mingw_info
+        download_and_extract(mingw_url + mingw_name + '/' + mingw_version, mingw_archives, None, args.output)
 
 
 if __name__ == '__main__':
