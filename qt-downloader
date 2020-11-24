@@ -18,6 +18,8 @@ VersionBaseUrl = 'https://download.qt.io/official_releases/qt/'
 
 AllowedOsPrefixes = ['mac', 'linux', 'windows']
 
+ProhibitedTargets = ['root', 'addons', 'conan_profiles']
+
 OsMap = {
   'macos': 'mac_x64',
   'linux': 'linux_x64',
@@ -71,7 +73,7 @@ def discover_kits(args):
 
     targets_dict = {}
     targets = discover_dirs(BaseUrl + os_type)
-    targets = [target for target in targets if target != 'root/']
+    targets = [target for target in targets if target[:-1] not in ProhibitedTargets]
     for target in targets:
       targets_dict[target[:-1]] = None
 
