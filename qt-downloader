@@ -16,6 +16,8 @@ import os
 BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
 VersionBaseUrl = 'https://download.qt.io/official_releases/qt/'
 
+AllowedOsPrefixes = ['mac', 'linux', 'windows']
+
 OsMap = {
   'macos': 'mac_x64',
   'linux': 'linux_x64',
@@ -25,6 +27,11 @@ OsMap = {
 
 def key_by_value(dict, value):
   return next((left for left, right in dict.items() if right == value), None)
+
+
+def allowed_os_type(os_type):
+  os_prefix = os_type.split('_')[0]
+  return os_prefix in AllowedOsPrefixes
 
 
 def decode_version(v):
@@ -53,6 +60,8 @@ def discover_kits(args):
   os_dict = {}
   os_types = discover_dirs(BaseUrl)
   for os_type in os_types:
+    if not allowed_os_type(os_type):
+      continue
     human_os = key_by_value(OsMap, os_type[:-1])
     current_os = human_os if human_os is not None else os_type[:-1]
     os_dict[current_os] = None
