@@ -104,9 +104,36 @@ def discover_kits(args):
   return os_dict
 
 
+def discover_openssl_tool(args, name):
+  tools_dirs = discover_dirs(BaseUrl + '{}/{}/'.format(OsMap[args.os], args.target))
+  for tool_dir in tools_dirs:
+    tool_dir = tool_dir[:-1]
+    if not tool_dir.startswith('tools_'):
+      continue
+
+    tool_parts = tool_dir.split('_')
+    if tool_parts[1].startswith(name) and tool_parts[2] != 'src':
+      if args.os == 'windows':
+        if args.toolchain.startswith('win32'):
+          if tool_parts[2] == 'x86':
+            return tool_parts[2]
+        elif args.toolchain.startswith('win64'):
+          if tool_parts[2] == 'x64':
+            return tool_parts[2]
+      elif args.os == 'linux':
+        if tool_parts[2] == 'x64':
+          return tool_parts[2]
+
+  return None
+
+
 def build_main_url(args):
   ver = args.version.replace('.', '')
   return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
+
+
+def build_tool_openssl_url(args, name, distr):
+  return BaseUrl + '{}/{}/tools_{}_{}/'.format(OsMap[args.os], args.target, name, distr)
 
 
 def get_main_info(url, version, toolchain):
@@ -126,10 +153,25 @@ def get_main_info(url, version, toolchain):
   return None
 
 
+def get_ossl_info(url, tool_name, distr):
+  reply = requests.get(url + "Updates.xml")
+  update_xml = etree.fromstring(reply.content)
+
+  for package in update_xml.xpath('//PackageUpdate'):
+    name = package.xpath('Name/text()')[0]
+    if name.startswith('qt.tools.{}.'.format(tool_name)) and name.endswith(distr[1:]):
+      version = package.xpath('Version/text()')[0]
+      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+      return (name, version, archives)
+
+  print('Update.xml does not contain proper entry for OpenSSL', file=sys.stderr)
+  return None
+
+
 def download_and_extract(archives_url, archives, modules, output):
   for archive in archives:
     module = archive.split('-')[0]
-    if len(modules) != 0 and (module not in modules):
+    if modules is not None and len(modules) != 0 and (module not in modules):
       continue
     try:
       print('Downloading module {}... '.format(module), end='', flush=True)
@@ -156,8 +198,6 @@ def download_and_extract(archives_url, archives, modules, output):
       raise KeyboardInterrupt
     finally:
       Path(archive).unlink()
-
-  print('Finished installation')
 
 
 def show_discover_context(args, parser):
@@ -317,6 +357,12 @@ def verify_parameters(args):
   kits = discover_kits(args)
   show_discovery_results(args, kits)
 
+  if args.openssl:
+    ossl_distribution = discover_openssl_tool(args, 'openssl')
+    if ossl_distribution is None:
+      print('Unable to locate appropriate distribution of OpenSSL', file=sys.stderr)
+      sys.exit(1)
+
 
 def main():
   parser = argparse.ArgumentParser(description='Qt downloader',
@@ -328,6 +374,7 @@ def main():
   parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
+  parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
@@ -349,6 +396,13 @@ def main():
 
     name, version, archives = info
     download_and_extract(url + name + '/' + version, archives, args.modules, args.output)
+    if args.openssl:
+      ossl_distribution = discover_openssl_tool(args, 'openssl')
+      ossl_url = build_tool_openssl_url(args, 'openssl', ossl_distribution)
+      ossl_info = get_ossl_info(ossl_url, 'openssl', ossl_distribution)
+      if ossl_info:
+        ossl_name, ossl_version, ossl_archives = ossl_info
+        download_and_extract(ossl_url + ossl_name + '/' + ossl_version, ossl_archives, None, args.output)
 
 
 if __name__ == '__main__':
