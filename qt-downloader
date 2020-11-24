@@ -104,12 +104,12 @@ def discover_kits(args):
   return os_dict
 
 
-def build_url(args):
+def build_main_url(args):
   ver = args.version.replace('.', '')
   return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
 
 
-def get_info(url, version, toolchain):
+def get_main_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
   update_xml = etree.fromstring(reply.content)
 
@@ -341,9 +341,9 @@ def main():
     sys.exit(0)
   else:
     verify_parameters(args)
-    url = build_url(args)
+    url = build_main_url(args)
 
-    info = get_info(url, args.version, args.toolchain)
+    info = get_main_info(url, args.version, args.toolchain)
     if info is None:
       sys.exit(1)
 
