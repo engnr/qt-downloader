@@ -48,6 +48,9 @@ about half a minute and provides lengthy output.*
 
 Qt kit lands into a folder with a name equal to the requested version.
 
+All modules of Qt are downloaded by default. Installation of a required subset of modules is
+supported as well. See option `--module`.
+
 ## Additional tools shipped with Qt
 
 Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
