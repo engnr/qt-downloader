@@ -46,7 +46,9 @@ discovered in one go. This way, discovering of all the arguments at the very beg
 possible too: `./qt-downloader --all`. *Bear in mind, though, that this operation lasts for
 about half a minute and provides lengthy output.*
 
-Qt kit lands into a folder with a name equal to the requested version.
+Qt kit lands into a folder with a name equal to the requested version. The kit is made
+relocatable by generating the `qt.conf` file with the appropriate contents. If the `qt.conf`
+file exists, then it is not touched.
 
 All modules of Qt are downloaded by default. Installation of a required subset of modules is
 supported as well. See option `--module`.

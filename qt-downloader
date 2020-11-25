@@ -408,6 +408,28 @@ def verify_parameters(args):
     if mingw_distribution is None:
       print('Unable to locate appropriate distribution of MinGW', file=sys.stderr)
       sys.exit(1)
+
+
+def derive_toolchain_dir(args):
+  parts = args.toolchain.split('_', maxsplit=1)
+  if args.os == 'windows':
+    if parts[1].startswith('mingw'):
+      return parts[1] + '_' + parts[0][-2:]
+    else:
+      return parts[1]
+
+  return args.toolchain
+      
+
+def make_relocatable(args):
+  qt_conf_path = Path(args.output) / args.version / derive_toolchain_dir(args) / 'bin' / 'qt.conf'
+  if not qt_conf_path.exists():
+    print('Creating qt.conf file so that Qt is relocatable... ', end='')
+    with qt_conf_path.open('w', encoding='utf-8') as f:
+      f.write('[Paths]\nPrefix = ..')
+    print('Done')
+  else:
+    print('qt.conf file exits, doing nothing')
     
     
 def main():
@@ -443,6 +465,7 @@ def main():
 
     name, version, archives = info
     download_and_extract('Qt', url + name + '/' + version, archives, args.modules, args.output)
+    make_relocatable(args)
 
     if args.openssl:
       ossl_distribution = discover_openssl_tool(args, 'openssl')
