@@ -50,6 +50,9 @@ Qt kit lands into a folder with a name equal to the requested version. The kit i
 relocatable by generating the `qt.conf` file with the appropriate contents. If the `qt.conf`
 file exists, then it is not touched.
 
+Need an Open Source version of Qt? Pass option `--opensource` and the Open Source license will
+be accepted.
+
 All modules of Qt are downloaded by default. Installation of a required subset of modules is
 supported as well. See option `--module`.
 

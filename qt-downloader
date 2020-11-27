@@ -2,6 +2,7 @@
 
 import argparse
 import platform
+import re
 import requests
 import semantic_version
 import shutil
@@ -10,7 +11,6 @@ import sys
 import urllib.request
 from lxml import etree, html
 from pathlib import Path
-import os
 
 
 BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
@@ -430,6 +430,16 @@ def make_relocatable(args):
     print('Done')
   else:
     print('qt.conf file exits, doing nothing')
+
+
+def accept_opensource_license(args):
+  print('Accepting the Open Source license... ', end='')
+  qconfig_pri = Path(args.output) / args.version / derive_toolchain_dir(args) / 'mkspecs' / 'qconfig.pri'
+  contents = qconfig_pri.read_text()
+  contents_edition = re.sub('QT_EDITION = Enterprise', 'QT_EDITION = OpenSource', contents)
+  contents_licheck = re.sub('QT_LICHECK = \S+', 'QT_LICHECK =', contents_edition)
+  qconfig_pri.write_text(contents_licheck)
+  print('Done')
     
     
 def main():
@@ -442,6 +452,7 @@ def main():
   parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
+  parser.add_argument('--opensource', action='store_true', help='Accept Open Source license')
   parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
   parser.add_argument('--mingw', action='store_true', help='Download MinGW distribution shipped with Qt. Relevant for Windows only')
   args = parser.parse_args()
@@ -466,6 +477,7 @@ def main():
     name, version, archives = info
     download_and_extract('Qt', url + name + '/' + version, archives, args.modules, args.output)
     make_relocatable(args)
+    accept_opensource_license(args)
 
     if args.openssl:
       ossl_distribution = discover_openssl_tool(args, 'openssl')
