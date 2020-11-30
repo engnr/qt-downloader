@@ -59,8 +59,8 @@ supported as well. See option `--module`.
 ## Additional tools shipped with Qt
 
 Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
-- OpenSSL, see option `--mingw`
-- MinGW, see option `--openssl`
+- OpenSSL, see option `--openssl`
+- MinGW, see option `--mingw`
 
 The appropriate version of a tool is inferred automatically when possible.
 
