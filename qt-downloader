@@ -104,6 +104,16 @@ def discover_kits(args):
   return os_dict
 
 
+def discover_tool(args, name):
+  tools_dirs = discover_dirs(build_tool_url(args, name))
+  for tool_dir in tools_dirs:
+    tool_dir = tool_dir[:-1]
+    if tool_dir == 'qt.tools.{}'.format(name):
+      return tool_dir
+
+  return None
+
+
 def discover_openssl_tool(args, name):
   tools_dirs = discover_dirs(BaseUrl + '{}/{}/'.format(OsMap[args.os], args.target))
   for tool_dir in tools_dirs:
@@ -128,9 +138,7 @@ def discover_openssl_tool(args, name):
 
 
 def discover_mingw_tool(args, name):
-  discovered_dirs = []
-
-  tools_dirs = discover_dirs(BaseUrl + '{}/{}/tools_{}'.format(OsMap[args.os], args.target, name))
+  tools_dirs = discover_dirs(build_tool_url(args, name))
   for tool_dir in tools_dirs:
     tool_dir = tool_dir[:-1]
     if not tool_dir.startswith('qt.tools.'):
@@ -189,7 +197,7 @@ def get_ossl_info(url, tool_name, distr):
   return None
 
 
-def get_mingw_info(url, distr):
+def get_tool_info(url, distr):
   reply = requests.get(url + "Updates.xml")
   update_xml = etree.fromstring(reply.content)
 
@@ -409,6 +417,12 @@ def verify_parameters(args):
       print('Unable to locate appropriate distribution of MinGW', file=sys.stderr)
       sys.exit(1)
 
+  if args.creator:
+    creator_distribution = discover_tool(args, 'qtcreator')
+    if creator_distribution is None:
+      print('Unable to locate appropriate distribution of QtCreator', file=sys.stderr)
+      sys.exit(1)
+
 
 def derive_toolchain_dir(args):
   parts = args.toolchain.split('_', maxsplit=1)
@@ -455,6 +469,7 @@ def main():
   parser.add_argument('--opensource', action='store_true', help='Accept Open Source license')
   parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
   parser.add_argument('--mingw', action='store_true', help='Download MinGW distribution shipped with Qt. Relevant for Windows only')
+  parser.add_argument('--creator', action='store_true', help='Download QtCreator distribution shipped with Qt')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
@@ -491,10 +506,18 @@ def main():
     if args.mingw:
       mingw_distribution = discover_mingw_tool(args, 'mingw')
       mingw_url = build_tool_url(args, 'mingw')
-      mingw_info = get_mingw_info(mingw_url, mingw_distribution)
+      mingw_info = get_tool_info(mingw_url, mingw_distribution)
       if mingw_info:
         mingw_name, mingw_version, mingw_archives = mingw_info
         download_and_extract('MinGW', mingw_url + mingw_name + '/' + mingw_version, mingw_archives, None, args.output)
+
+    if args.creator:
+      creator_distribution = discover_tool(args, 'qtcreator')
+      creator_url = build_tool_url(args, 'qtcreator')
+      creator_info = get_tool_info(creator_url, creator_distribution)
+      if creator_info:
+        creator_name, creator_version, creator_archives = creator_info
+        download_and_extract('QtCreator', creator_url + creator_name + '/' + creator_version, creator_archives, None, args.output)
 
 
 if __name__ == '__main__':
