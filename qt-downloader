@@ -157,21 +157,33 @@ def build_tool_url(args, name):
   return BaseUrl + '{}/{}/tools_{}/'.format(OsMap[args.os], args.target, name)
 
  
-def get_main_info(url, version, toolchain):
+def get_modules_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
   update_xml = etree.fromstring(reply.content)
+
+  info = {
+    'main': None,
+    'addons': []
+  }
 
   ver = version.replace('.', '')
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
-    if name.startswith('qt.') and name.endswith('.{}.{}'.format(ver, toolchain)):
-      version = package.xpath('Version/text()')[0]
-      archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
-      return (name, version, archives)
+    name_parts = name.split('.')
+    if name_parts[0:3] != ['qt', 'qt5', ver] or name_parts[-1] != toolchain:
+      continue
 
-  print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
-  return None
+    version = package.xpath('Version/text()')[0]
+    archives = package.xpath('DownloadableArchives/text()')[0].split(', ')
+    if len(name_parts) == 4:
+      info['main'] = (name, version, archives)
+    elif len(name_parts) == 5 and name_parts[3] != 'debug_info':
+      info['addons'].append((name, version, archives))
+
+  if info['main'] is None:
+    print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
+  return info
 
 
 def get_ossl_info(url, tool_name, distr):
@@ -451,6 +463,7 @@ def main():
   parser.add_argument('toolchain', nargs='?', default='discover', help='Toolchain to use. Omit this to discover available toolchains')
   parser.add_argument('--all', '-a', action='store_true', help='Discover allowed values for all missing arguments')
   parser.add_argument('--modules', '-m', nargs='*', default=[], help='Download only selected modules')
+  parser.add_argument('--addons', '-n', nargs='*', default=[], help='Download add-on modules')
   parser.add_argument('--output', '-o', default='.', help='Output directory')
   parser.add_argument('--opensource', action='store_true', help='Accept Open Source license')
   parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
@@ -470,15 +483,21 @@ def main():
     verify_parameters(args)
     url = build_main_url(args)
 
-    info = get_main_info(url, args.version, args.toolchain)
-    if info is None:
+    info = get_modules_info(url, args.version, args.toolchain)
+    if info['main'] is None:
       sys.exit(1)
 
-    name, version, archives = info
+    name, version, archives = info['main']
     download_and_extract('Qt', url + name + '/' + version, archives, args.modules, args.output)
     make_relocatable(args)
     if args.opensource:
       accept_opensource_license(args)
+
+    if len(args.addons) > 0:
+      for name, version, archives in info['addons']:
+        addon_name = name.split('.')[3]
+        if addon_name in args.addons:
+          download_and_extract(addon_name, url + name + '/' + version, archives, None, args.output)
 
     if args.openssl:
       ossl_distribution = discover_openssl_tool(args, 'openssl')

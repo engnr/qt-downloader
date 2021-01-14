@@ -56,6 +56,9 @@ be accepted.
 All modules of Qt are downloaded by default. Installation of a required subset of modules is
 supported as well. See option `--module`.
 
+Add-on modules are not downloaded by default. One has to list desired add-ons explicitly by
+means of the option `--addon`.
+
 ## Additional tools shipped with Qt
 
 Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
@@ -65,6 +68,4 @@ Qt ships a few tools as complementary packages. The current list of supported to
 The appropriate version of a tool is inferred automatically when possible.
 
 Additional tools land into the `Tools` folder by the side of the Qt itself.
-
- 
 
