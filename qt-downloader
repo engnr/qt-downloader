@@ -477,7 +477,8 @@ def main():
     name, version, archives = info
     download_and_extract('Qt', url + name + '/' + version, archives, args.modules, args.output)
     make_relocatable(args)
-    accept_opensource_license(args)
+    if args.opensource:
+      accept_opensource_license(args)
 
     if args.openssl:
       ossl_distribution = discover_openssl_tool(args, 'openssl')
