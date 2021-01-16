@@ -61,10 +61,12 @@ supported as well. See option `--module`.
 Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
 - OpenSSL, see option `--openssl`
 - MinGW, see option `--mingw`
+- QtCreator, see option `--creator`
 
 The appropriate version of a tool is inferred automatically when possible.
 
-Additional tools land into the `Tools` folder by the side of the Qt itself.
+Additional tools land into the `Tools` folder by the side of the Qt itself. The only exception
+to this rule is the QtCreator for macOS: it is installed to the root of the output directory.
 
  
 
