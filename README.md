@@ -59,6 +59,8 @@ supported as well. See option `--module`.
 Add-on modules are not downloaded by default. One has to list desired add-ons explicitly by
 means of the option `--addon`.
 
+**Warning**. All inter-modules dependencies have to be resolved manually.
+
 ## Additional tools shipped with Qt
 
 Qt ships a few tools as complementary packages. The current list of supported tools is as follows:
