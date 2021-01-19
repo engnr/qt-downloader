@@ -544,8 +544,10 @@ if __name__ == '__main__':
     main()
   except IOError as error:
     print(error)
+    sys.exit(1)
   except RuntimeError as error:
     print(error)
+    sys.exit(1)
   except KeyboardInterrupt:
     print('Stopped by user')
 
