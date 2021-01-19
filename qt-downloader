@@ -543,10 +543,10 @@ if __name__ == '__main__':
   try:
     main()
   except IOError as error:
-    print(error, file=sys.stderr)
+    print(' Error: {}'.format(error))
     sys.exit(1)
   except RuntimeError as error:
-    print(error, file=sys.stderr)
+    print(' Error: {}'.format(error))
     sys.exit(1)
   except KeyboardInterrupt:
     print('Stopped by user')
