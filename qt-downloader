@@ -328,28 +328,28 @@ def show_toolchains_only(toolchains):
 
 def check_os_type(args, kits):
   if not args.os in kits:
-    print('  Unknown OS type: {}'.format(args.os))
+    print('  Unknown OS type: {}'.format(args.os), file=sys.stderr)
     show_os_types_only(kits)
     sys.exit(1)
 
 
 def check_targets(args, targets):
   if not args.target in targets:
-    print('  Unknown target: {}'.format(args.target))
+    print('  Unknown target: {}'.format(args.target), file=sys.stderr)
     show_targets_only(targets)
     sys.exit(1)
 
 
 def check_versions(args, versions):
   if not args.version in versions:
-    print('  Unknown version: {}'.format(args.version))
+    print('  Unknown version: {}'.format(args.version), file=sys.stderr)
     show_versions_only(versions)
     sys.exit(1)
 
 
 def check_toolchains(args, toolchains):
   if not args.toolchain in toolchains:
-    print('  Unknown toolchain: {}'.format(args.toolchain))
+    print('  Unknown toolchain: {}'.format(args.toolchain), file=sys.stderr)
     show_toolchains_only(toolchains)
     sys.exit(1)
 
@@ -543,10 +543,10 @@ if __name__ == '__main__':
   try:
     main()
   except IOError as error:
-    print(error)
+    print(error, file=sys.stderr)
     sys.exit(1)
   except RuntimeError as error:
-    print(error)
+    print(error, file=sys.stderr)
     sys.exit(1)
   except KeyboardInterrupt:
     print('Stopped by user')
