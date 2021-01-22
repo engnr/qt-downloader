@@ -59,6 +59,8 @@ supported as well. See option `--module`.
 Add-on modules are not downloaded by default. One has to list desired add-ons explicitly by
 means of the option `--addon`.
 
+Mirrors of official servers are supported by the option `--server`.
+
 **Warning**. All inter-modules dependencies have to be resolved manually.
 
 ## Additional tools shipped with Qt
