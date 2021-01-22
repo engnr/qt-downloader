@@ -9,12 +9,13 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+import urllib.parse
+from ftplib import FTP
 from lxml import etree, html
 from pathlib import Path
 
 
-BaseUrl = 'https://download.qt.io/online/qtsdkrepository/'
-VersionBaseUrl = 'https://download.qt.io/official_releases/qt/'
+MasterUrl = 'https://download.qt.io/'
 
 AllowedOsPrefixes = ['mac', 'linux', 'windows']
 
@@ -25,6 +26,14 @@ OsMap = {
   'linux': 'linux_x64',
   'windows': 'windows_x86'
 }
+
+
+def base_url(server_url):
+  return '{}online/qtsdkrepository/'.format(server_url)
+
+
+def version_base_url(server_url):
+  return '{}/official_releases/qt/'.format(server_url)
 
 
 def key_by_value(dict, value):
@@ -52,52 +61,58 @@ def deduce_os():
 
 
 def discover_dirs(url):
-  reply = requests.get(url)
-  page = html.fromstring(reply.content)
-  items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
-  return [item for item in items if item.endswith('/')]
+  parsed_url = urllib.parse.urlparse(url)
+  if parsed_url.netloc == 'download.qt.io':
+    reply = requests.get(url)
+    page = html.fromstring(reply.content)
+    items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
+    return [item[:-1] for item in items if item.endswith('/')]
+  else:
+    with FTP(parsed_url.netloc) as ftp:
+      ftp.login()
+      ftp.cwd(parsed_url.path)
+      return ftp.nlst()
 
 
 def discover_kits(args):
   os_dict = {}
-  os_types = discover_dirs(BaseUrl)
+  os_types = discover_dirs(base_url(args.server))
   for os_type in os_types:
     if not allowed_os_type(os_type):
       continue
-    human_os = key_by_value(OsMap, os_type[:-1])
-    current_os = human_os if human_os is not None else os_type[:-1]
+    human_os = key_by_value(OsMap, os_type)
+    current_os = human_os if human_os is not None else os_type
     os_dict[current_os] = None
 
-    if not (args.os == 'discover' and args.all or args.os != 'discover' and args.os in [os_type[:-1], human_os]):
+    if not (args.os == 'discover' and args.all or args.os != 'discover' and args.os in [os_type, human_os]):
       continue
 
     targets_dict = {}
-    targets = discover_dirs(BaseUrl + os_type)
-    targets = [target for target in targets if target[:-1] not in ProhibitedTargets]
+    targets = discover_dirs(base_url(args.server) + os_type)
+    targets = [target for target in targets if target not in ProhibitedTargets]
     for target in targets:
-      targets_dict[target[:-1]] = None
+      targets_dict[target] = None
 
-      if not (args.target == 'discover' and args.all or args.target != 'discover' and args.target == target[:-1]):
+      if not (args.target == 'discover' and args.all or args.target != 'discover' and args.target == target):
         continue
 
       versions_dict = {}
-      major_minor_version_dirs = discover_dirs(VersionBaseUrl)
+      major_minor_version_dirs = discover_dirs(version_base_url(args.server))
       for major_minor_version_dir in major_minor_version_dirs:
-        full_version_dirs = discover_dirs(VersionBaseUrl + major_minor_version_dir)
+        full_version_dirs = discover_dirs(version_base_url(args.server) + major_minor_version_dir)
         for version in full_version_dirs:
-          version = version[:-1]
           versions_dict[version] = None
           if not (args.version == 'discover' and args.all or args.version != 'discover' and args.version != 'latest' and args.version == version):
             continue
           major, minor, patch = version.split('.')
-          toolchains = discover_dirs('{0}qt{1}_{1}{2}{3}/'.format(BaseUrl + os_type + target, major, minor, patch))
+          toolchains = discover_dirs('/'.join([base_url(args.server), os_type, target, 'qt{0}_{0}{1}{2}'.format(major, minor, patch)]))
           toolchains = [toolchain.split('.')[2:] for toolchain in toolchains]
           toolchains = [toolchain[-1] for toolchain in toolchains if len(toolchain) > 0]
-          toolchains = set([toolchain[:-1] for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
+          toolchains = set([toolchain for toolchain in toolchains if not toolchain.startswith('qt') and not toolchain.startswith('debug')])
 
           versions_dict[version] = toolchains
 
-      targets_dict[target[:-1]] = versions_dict
+      targets_dict[target] = versions_dict
 
     os_dict[current_os] = targets_dict
 
@@ -115,7 +130,7 @@ def discover_tool(args, name):
 
 
 def discover_openssl_tool(args, name):
-  tools_dirs = discover_dirs(BaseUrl + '{}/{}/'.format(OsMap[args.os], args.target))
+  tools_dirs = discover_dirs(base_url(args.server) + '{}/{}/'.format(OsMap[args.os], args.target))
   for tool_dir in tools_dirs:
     tool_dir = tool_dir[:-1]
     if not tool_dir.startswith('tools_'):
@@ -154,15 +169,15 @@ def discover_mingw_tool(args, name):
 
 def build_main_url(args):
   ver = args.version.replace('.', '')
-  return BaseUrl + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
+  return base_url(args.server) + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
 
 
 def build_tool_openssl_url(args, name, distr):
-  return BaseUrl + '{}/{}/tools_{}_{}/'.format(OsMap[args.os], args.target, name, distr)
+  return base_url(args.server) + '{}/{}/tools_{}_{}/'.format(OsMap[args.os], args.target, name, distr)
 
 
 def build_tool_url(args, name):
-  return BaseUrl + '{}/{}/tools_{}/'.format(OsMap[args.os], args.target, name)
+  return base_url(args.server) + '{}/{}/tools_{}/'.format(OsMap[args.os], args.target, name)
 
  
 def get_modules_info(url, version, toolchain):
@@ -483,6 +498,7 @@ def main():
   parser.add_argument('--openssl', action='store_true', help='Download OpenSSL distribution shipped with Qt')
   parser.add_argument('--mingw', action='store_true', help='Download MinGW distribution shipped with Qt. Relevant for Windows only')
   parser.add_argument('--creator', action='store_true', help='Download QtCreator distribution shipped with Qt')
+  parser.add_argument('--server', '-s', default=MasterUrl, help='Server URL. Defaults to official master server by the Qt Company. Set to mirror URL to use instead of official servers')
   args = parser.parse_args()
 
   show_discover_context(args, parser)
