@@ -2,6 +2,7 @@
 
 import argparse
 import platform
+import py7zr
 import re
 import requests
 import semantic_version
@@ -252,20 +253,9 @@ def download_and_extract(title, archives_url, archives, modules, output):
         shutil.copyfileobj(response, out_file)
 
       print('\r  Extracting module {}... '.format(module), end='', flush=True)
-      subprocess.run('7z x {0} -o{1}'.format(archive, output), shell=True, check=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      with py7zr.SevenZipFile(archive, mode='r') as z:
+        z.extractall(path=output)
       print('\r  Installed module {} successfully'.format(module))
-    except subprocess.CalledProcessError as e:
-      print('  Error: {}'.format(e))
-
-      os_type = deduce_os()
-      suggestion = ''
-      if os_type == 'linux':
-        suggestion = ' Run sudo apt install p7zip-full on Ubuntu'
-      elif os_type == 'macos':
-        suggestion = ' Run brew install p7zip on macOS'
-        
-      raise RuntimeError('Check that 7z command is in your PATH.{}'.format(suggestion))
     except KeyboardInterrupt:
       print('Interrupted')
       raise KeyboardInterrupt

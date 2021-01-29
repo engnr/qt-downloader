@@ -7,15 +7,15 @@ CLI to download Qt on headless systems
 
 ```bash
 sudo apt update
-sudo apt install python3-pip p7zip-full
-sudo pip3 install requests semantic_version lxml
+sudo apt install python3-pip
+sudo pip3 install requests semantic_version lxml py7zr
 ```
 
 ## macOS
 
 ```
-brew install python3 p7zip
-pip3 install requests semantic_version lxml
+brew install python3
+pip3 install requests semantic_version lxml py7zr
 ```
 
 # Usage
