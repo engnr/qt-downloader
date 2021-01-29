@@ -8,17 +8,19 @@ CLI to download Qt on headless systems
 ```bash
 sudo apt update
 sudo apt install python3-pip
-sudo pip3 install requests semantic_version lxml py7zr
+sudo pip3 install pipenv
 ```
 
 ## macOS
 
 ```
 brew install python3
-pip3 install requests semantic_version lxml py7zr
+pip3 install pipenv
 ```
 
 # Usage
+
+**Note**. Either enter `pipenv shell` and run commands as is or prepend them with `pipenv run` every time.
 
 Start by reading the help: `./qt-downloader --help`
 
