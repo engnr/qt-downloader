@@ -133,7 +133,6 @@ def discover_tool(args, name):
 def discover_openssl_tool(args, name):
   tools_dirs = discover_dirs(base_url(args.server) + '{}/{}/'.format(OsMap[args.os], args.target))
   for tool_dir in tools_dirs:
-    tool_dir = tool_dir[:-1]
     if not tool_dir.startswith('tools_'):
       continue
 
@@ -156,7 +155,6 @@ def discover_openssl_tool(args, name):
 def discover_mingw_tool(args, name):
   tools_dirs = discover_dirs(build_tool_url(args, name))
   for tool_dir in tools_dirs:
-    tool_dir = tool_dir[:-1]
     if not tool_dir.startswith('qt.tools.'):
       continue
 
