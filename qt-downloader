@@ -128,7 +128,6 @@ def discover_kits(args):
 def discover_tool(args, name):
   tools_dirs = discover_dirs(build_tool_url(args, name))
   for tool_dir in tools_dirs:
-    tool_dir = tool_dir[:-1]
     if tool_dir == 'qt.tools.{}'.format(name):
       return tool_dir
 
