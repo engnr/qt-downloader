@@ -66,6 +66,10 @@ def discover_dirs(url):
   parsed_url = urllib.parse.urlparse(url)
   if parsed_url.netloc == MasterDomain:
     reply = requests.get(url)
+    if reply.status_code != requests.codes.ok:
+      print(reply.content, file=sys.stderr)
+      return []
+
     page = html.fromstring(reply.content)
     items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
     return [item[:-1] for item in items if item.endswith('/')]
@@ -182,12 +186,11 @@ def build_tool_url(args, name):
  
 def get_modules_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
-  try:
-    update_xml = etree.fromstring(reply.content)
-  except etree.XMLSyntaxError as error:
-    print(error, file=sys.stderr)
+  if reply.status_code != requests.codes.ok:
     print(reply.content, file=sys.stderr)
     return None
+
+  update_xml = etree.fromstring(reply.content)
 
   info = {
     'main': None,
@@ -216,12 +219,11 @@ def get_modules_info(url, version, toolchain):
 
 def get_ossl_info(url, tool_name, distr):
   reply = requests.get(url + "Updates.xml")
-  try:
-    update_xml = etree.fromstring(reply.content)
-  except etree.XMLSyntaxError as error:
-    print(error, file=sys.stderr)
+  if reply.status_code != requests.codes.ok:
     print(reply.content, file=sys.stderr)
     return None
+
+  update_xml = etree.fromstring(reply.content)
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
@@ -236,12 +238,11 @@ def get_ossl_info(url, tool_name, distr):
 
 def get_tool_info(url, distr):
   reply = requests.get(url + "Updates.xml")
-  try:
-    update_xml = etree.fromstring(reply.content)
-  except etree.XMLSyntaxError as error:
-    print(error, file=sys.stderr)
+  if reply.status_code != requests.codes.ok:
     print(reply.content, file=sys.stderr)
     return None
+
+  update_xml = etree.fromstring(reply.content)
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
