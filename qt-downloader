@@ -172,8 +172,9 @@ def discover_mingw_tool(args, name):
 
 
 def build_main_url(args):
+  major = args.version.split('.')[0]
   ver = args.version.replace('.', '')
-  return base_url(args.server) + '{}/{}/qt5_{}/'.format(OsMap[args.os], args.target, ver)
+  return base_url(args.server) + '{}/{}/qt{}_{}/'.format(OsMap[args.os], args.target, major, ver)
 
 
 def build_tool_openssl_url(args, name, distr):
@@ -197,12 +198,13 @@ def get_modules_info(url, version, toolchain):
     'addons': []
   }
 
+  major = version.split('.')[0]
   ver = version.replace('.', '')
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
     name_parts = name.split('.')
-    if name_parts[0:3] != ['qt', 'qt5', ver] or name_parts[-1] != toolchain:
+    if name_parts[0:3] != ['qt', 'qt{}'.format(major), ver] or name_parts[-1] != toolchain:
       continue
 
     version = package.xpath('Version/text()')[0]
