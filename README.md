@@ -55,8 +55,8 @@ file exists, then it is not touched.
 Need an Open Source version of Qt? Pass option `--opensource` and the Open Source license will
 be accepted.
 
-All modules of Qt are downloaded by default. Installation of a required subset of modules is
-supported as well. See option `--module`.
+All essential modules of Qt are downloaded by default. Installation of a required subset of
+essential modules is supported as well. See option `--module`.
 
 Add-on modules are not downloaded by default. One has to list desired add-ons explicitly by
 means of the option `--addon`.
