@@ -182,7 +182,12 @@ def build_tool_url(args, name):
  
 def get_modules_info(url, version, toolchain):
   reply = requests.get(url + "Updates.xml")
-  update_xml = etree.fromstring(reply.content)
+  try:
+    update_xml = etree.fromstring(reply.content)
+  except etree.XMLSyntaxError as error:
+    print(error, file=sys.stderr)
+    print(reply.content, file=sys.stderr)
+    return None
 
   info = {
     'main': None,
@@ -211,7 +216,12 @@ def get_modules_info(url, version, toolchain):
 
 def get_ossl_info(url, tool_name, distr):
   reply = requests.get(url + "Updates.xml")
-  update_xml = etree.fromstring(reply.content)
+  try:
+    update_xml = etree.fromstring(reply.content)
+  except etree.XMLSyntaxError as error:
+    print(error, file=sys.stderr)
+    print(reply.content, file=sys.stderr)
+    return None
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
@@ -226,7 +236,12 @@ def get_ossl_info(url, tool_name, distr):
 
 def get_tool_info(url, distr):
   reply = requests.get(url + "Updates.xml")
-  update_xml = etree.fromstring(reply.content)
+  try:
+    update_xml = etree.fromstring(reply.content)
+  except etree.XMLSyntaxError as error:
+    print(error, file=sys.stderr)
+    print(reply.content, file=sys.stderr)
+    return None
 
   for package in update_xml.xpath('//PackageUpdate'):
     name = package.xpath('Name/text()')[0]
@@ -504,7 +519,7 @@ def main():
     url = build_main_url(args)
 
     info = get_modules_info(url, args.version, args.toolchain)
-    if info['main'] is None:
+    if info is None or info['main'] is None:
       sys.exit(1)
 
     name, version, archives = info['main']
