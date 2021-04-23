@@ -16,7 +16,8 @@ from lxml import etree, html
 from pathlib import Path
 
 
-MasterUrl = 'https://download.qt.io/'
+MasterDomain = 'download.qt.io'
+MasterUrl = 'https://{}/'.format(MasterDomain)
 
 AllowedOsPrefixes = ['mac', 'linux', 'windows']
 
@@ -63,7 +64,7 @@ def deduce_os():
 
 def discover_dirs(url):
   parsed_url = urllib.parse.urlparse(url)
-  if parsed_url.netloc == 'download.qt.io':
+  if parsed_url.netloc == MasterDomain:
     reply = requests.get(url)
     page = html.fromstring(reply.content)
     items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
