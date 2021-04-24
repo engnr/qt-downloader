@@ -47,14 +47,6 @@ def allowed_os_type(os_type):
   return os_prefix in AllowedOsPrefixes
 
 
-def decode_version(v):
-  v = list(v)
-  major = v.pop(0)
-  patch = v.pop() if len(v) > 1 else 0
-  minor = ''.join(v)
-  return '{}.{}.{}'.format(major, minor, patch)
-
-
 def deduce_os():
   os_type = platform.system().lower()
   if os_type == 'darwin':
