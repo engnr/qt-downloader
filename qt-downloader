@@ -468,7 +468,7 @@ def make_relocatable(args):
       f.write('[Paths]\nPrefix = ..')
     print('Done')
   else:
-    print('qt.conf file exits, doing nothing')
+    print('qt.conf file exists, doing nothing')
 
 
 def accept_opensource_license(args):
