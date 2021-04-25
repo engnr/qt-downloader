@@ -3,8 +3,6 @@ CLI to download Qt on headless systems
 
 # Preparation
 
-**Note**. You may skip this section if you opt for `pipenv` approach.
-
 ## Ubuntu
 
 ```bash
