@@ -196,6 +196,7 @@ def get_modules_info(url, version, toolchain):
     name = package.xpath('Name/text()')[0]
     name_parts = name.split('.')
     if name_parts[0:3] != ['qt', 'qt{}'.format(major), ver] or name_parts[-1] != toolchain:
+      # print(name, "-> ignored", name_parts[0:3], name_parts[-1])
       continue
 
     version = package.xpath('Version/text()')[0]
@@ -204,6 +205,11 @@ def get_modules_info(url, version, toolchain):
       info['main'] = (name, version, archives)
     elif len(name_parts) == 5 and name_parts[3] != 'debug_info':
       info['addons'].append((name, version, archives))
+    elif len(name_parts) == 6:
+      info['addons'].append((name, version, archives))
+    else:
+      # print(name, "-> ignored", name_parts)
+      pass
 
   if info['main'] is None:
     print('Update.xml does not contain proper entry for Qt kit', file=sys.stderr)
@@ -525,6 +531,9 @@ def main():
     if len(args.addons) > 0:
       for name, version, archives in info['addons']:
         addon_name = name.split('.')[3]
+        if addon_name == "addons":
+          addon_name = name.split('.')[4]
+        # print(addon_name, args.addons)
         if addon_name in args.addons:
           download_and_extract(addon_name, url + name + '/' + version, archives, None, args.output)
 
