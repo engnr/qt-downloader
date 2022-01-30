@@ -59,7 +59,8 @@ All essential modules of Qt are downloaded by default. Installation of a require
 essential modules is supported as well. See option `--module`.
 
 Add-on modules are not downloaded by default. One has to list desired add-ons explicitly by
-means of the option `--addon`.
+means of the option `--addon`. On Windows, adding `debug_info` to the list of addons installs
+the debug files for the essential modules as well as the selected addons.
 
 Mirrors of official servers are supported by the option `--server`.
 
