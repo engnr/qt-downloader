@@ -18,6 +18,12 @@ brew install python3
 pip3 install pipenv
 ```
 
+## Common
+
+```
+pipenv install
+```
+
 # Usage
 
 **Note**. Either enter `pipenv shell` and run commands as is or prepend them with `pipenv run` every time.
