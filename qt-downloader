@@ -11,13 +11,11 @@ import subprocess
 import sys
 import urllib.request
 import urllib.parse
-from ftplib import FTP
 from lxml import etree, html
 from pathlib import Path
 
 
-MasterDomain = 'download.qt.io'
-MasterUrl = 'https://{}/'.format(MasterDomain)
+MasterUrl = 'https://download.qt.io/'
 
 AllowedOsPrefixes = ['mac', 'linux', 'windows']
 
@@ -56,20 +54,14 @@ def deduce_os():
 
 def discover_dirs(url):
   parsed_url = urllib.parse.urlparse(url)
-  if parsed_url.netloc == MasterDomain:
-    reply = requests.get(url)
-    if reply.status_code != requests.codes.ok:
-      print(reply.content, file=sys.stderr)
-      return []
+  reply = requests.get(url)
+  if reply.status_code != requests.codes.ok:
+    print(reply.content, file=sys.stderr)
+    return []
 
-    page = html.fromstring(reply.content)
-    items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
-    return [item[:-1] for item in items if item.endswith('/')]
-  else:
-    with FTP(parsed_url.netloc) as ftp:
-      ftp.login()
-      ftp.cwd(parsed_url.path)
-      return ftp.nlst()
+  page = html.fromstring(reply.content)
+  items = page.xpath('//table//tr[position()>2]//a[not(starts-with(@href, "/"))]/@href')
+  return [item[:-1] for item in items if item.endswith('/')]
 
 
 def discover_kits(args):
